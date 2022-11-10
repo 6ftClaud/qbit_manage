@@ -1161,3 +1161,55 @@ class Qbt:
                 torrent.delete(delete_files=True)
             else:
                 torrent.delete(delete_files=False)
+                
+    def CustomFunction(self):
+        dry_run = self.config.commands['dry_run']
+        loglevel = 'DRYRUN' if dry_run else 'INFO'
+        logger.separator("Running custom commands (6ftClaud)", space=False, border=False)
+
+        removeUnregistered = False
+        removePaused = True
+        retagTorrents = True
+        deleteTorrentFiles = False
+
+        torrents = self.client.torrents.info()
+
+        messages = ["Torrent not found",
+                    "Unregistered torrent",
+                    "Torrent not registered",
+                    "Invalid"]
+
+        for index, torrent in enumerate(torrents):
+            if removeUnregistered:
+                for status in torrent.trackers:
+                    for message in messages:
+                        if message in status.msg:
+                            logger.print_line(f"Removed {torrent.name} from client : unregistered torrent", loglevel)
+                            torrent.delete(hash=torrent.hash,
+                                           delete_files=deleteTorrentFiles)
+            if removePaused:
+                if torrent.state_enum.is_paused:
+                    logger.print_line(f"Removed {torrent.name} from client : paused torrent", loglevel)
+                    torrent.delete(hash=torrent.hash, delete_files=deleteTorrentFiles)
+            if retagTorrents:
+                if "cross-seed" in torrent.tags and "private" in torrent.tags:
+                    logger.print_line(f"Retagged torrent {torrent.name} : change private to hidden for cross-seed", loglevel)
+                    self.client.torrents_remove_tags(
+                        tags="private", torrent_hashes=torrent.hash)
+                    self.client.torrents_add_tags(
+                        tags="hidden", torrent_hashes=torrent.hash)
+
+                if "cross-seed" in torrent.tags:
+                    hashes = []
+                    cross_seedName = torrent.name
+                    for cross_seed in torrents:
+                        if torrent.name == cross_seedName:
+                            hashes.append((cross_seed.name, cross_seed.hash))
+                    if len(hashes) == 1:
+                        torrentName = hashes[0][0]
+                        torrentHash = hashes[0][1]
+                        logger.print_line(f"Retagged torrent {torrentName} : not cross-seed", loglevel)
+                        self.client.torrents_remove_tags(
+                            tags=["hidden", "cross-seed"], torrent_hashes=torrentHash)
+                        self.client.torrents_add_tags(
+                            tags="private", torrent_hashes=torrentHash)

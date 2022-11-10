@@ -404,6 +404,9 @@ def start():
         stats["deleted"] += num_deleted
         stats["deleted_contents"] += num_deleted_contents
 
+        # CustomFunction
+        cfg.qbt.CustomFunction()
+
         # Remove Orphaned Files
         num_orphaned = cfg.qbt.rem_orphaned()
         stats["orphaned"] += num_orphaned
